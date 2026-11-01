@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10b981">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Budget Tracker">
+  <meta name="description" content="Personal finance tracker for KBC & Beobank — monthly reports, budgets, and spending analytics.">
+
+  <title>Budget Tracker — Personal Finance</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-logo">
+      <span class="leaf">🌿</span>
+      <span>Budget Tracker</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openAddTxModal()" title="Add transaction">＋</button>
+      <button class="icon-btn" onclick="document.getElementById('csv-input').click()" title="Import CSV">⬆</button>
+    </div>
+  </header>
+
+  <!-- Hidden CSV input -->
+  <input type="file" id="csv-input" accept=".csv,.txt,.tsv" multiple style="display:none">
+
+  <!-- ── Pages ── -->
+  <div class="pages">
+
+    <!-- ──────────────── DASHBOARD ──────────────── -->
+    <div class="page" id="page-dashboard">
+
+      <!-- Net Worth -->
+      <div class="net-worth animate-in">
+        <div class="nw-label">Total Balance</div>
+        <div class="nw-amount" id="nw-amount">€0.00</div>
+        <div class="nw-change" id="nw-change">Loading...</div>
+      </div>
+
+      <!-- Account Cards -->
+      <div class="account-cards animate-in">
+        <div class="account-card kbc" onclick="navigate('transactions')">
+          <div class="account-card-bank">KBC</div>
+          <div class="account-card-name">Current Account</div>
+          <div class="account-card-balance" id="kbc-balance">€—</div>
+          <div class="account-card-sub">Last imported balance</div>
+          <div class="account-card-badge">🏦 KBC</div>
+        </div>
+        <div class="account-card beobank" onclick="navigate('transactions')">
+          <div class="account-card-bank">BEOBANK</div>
+          <div class="account-card-name">Credit Card</div>
+          <div class="account-card-balance" id="beobank-balance">€—</div>
+          <div class="account-card-sub">Last imported balance</div>
+          <div class="account-card-badge">💳 Credit</div>
+        </div>
+      </div>
+
+      <!-- Monthly Stats -->
+      <div class="stats-row animate-in">
+        <div class="stat-card">
+          <div class="stat-value" id="dash-income" style="color:var(--em)">€0</div>
+          <div class="stat-label">Income</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="dash-expenses" style="color:var(--red)">€0</div>
+          <div class="stat-label">Expenses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="dash-net">€0</div>
+          <div class="stat-label">Net This Month</div>
+        </div>
+      </div>
+
+      <!-- Import Zone (shown when no data) -->
+      <div class="import-zone animate-in" id="import-zone">
+        <div class="import-zone-icon">📂</div>
+        <p><strong>Import your bank CSV</strong></p>
+        <p>Drag & drop or tap to upload<br>KBC or Beobank exports</p>
+        <p style="margin-top:8px;font-size:0.72rem;color:var(--muted)">Or tap <strong style="color:var(--em)">Load Demo</strong> below to try with sample data</p>
+      </div>
+      <button class="btn btn-secondary" style="margin-bottom:12px" onclick="seedDemoData()">🎭 Load Demo Data</button>
+
+      <!-- Recent Transactions -->
+      <div class="section-header">
+        <span class="section-title">Recent Transactions</span>
+        <span class="section-link" onclick="navigate('transactions')">See all →</span>
+      </div>
+      <div id="recent-txs" class="tx-list animate-in"></div>
+
+      <!-- Budget Overview -->
+      <div class="section-header" style="margin-top:20px">
+        <span class="section-title">Budget Overview</span>
+        <span class="section-link" onclick="navigate('settings')">Edit →</span>
+      </div>
+      <div id="dash-budgets" class="budget-grid animate-in"></div>
+
+    </div><!-- /dashboard -->
+
+
+    <!-- ──────────────── TRANSACTIONS ──────────────── -->
+    <div class="page" id="page-transactions">
+
+      <!-- Search -->
+      <div style="position:relative;margin-bottom:12px">
+        <input type="search" id="tx-search" class="form-input" placeholder="🔍  Search transactions…">
+      </div>
+
+      <!-- Filter pills -->
+      <div class="pills">
+        <div class="pill active" data-filter="all"     onclick="setTxFilter('all')">All</div>
+        <div class="pill"        data-filter="kbc"     onclick="setTxFilter('kbc')">KBC</div>
+        <div class="pill"        data-filter="beobank" onclick="setTxFilter('beobank')">Beobank</div>
+        <div class="pill"        data-filter="expense" onclick="setTxFilter('expense')">Expenses</div>
+        <div class="pill"        data-filter="income"  onclick="setTxFilter('income')">Income</div>
+      </div>
+
+      <!-- Import nudge -->
+      <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer" onclick="document.getElementById('csv-input').click()">
+        <span style="font-size:1.4rem">📥</span>
+        <div>
+          <div style="font-size:0.85rem;font-weight:700">Import CSV</div>
+          <div style="font-size:0.72rem;color:var(--muted)">KBC & Beobank exports auto-detected</div>
+        </div>
+        <span style="margin-left:auto;color:var(--em);font-weight:700">↑</span>
+      </div>
+
+      <div id="tx-list"></div>
+    </div><!-- /transactions -->
+
+
+    <!-- ──────────────── ANALYTICS ──────────────── -->
+    <div class="page" id="page-analytics">
+
+      <!-- Month selector -->
+      <div class="month-selector">
+        <span class="month-nav" onclick="shiftMonth(-1)">‹</span>
+        <span class="month-label" id="analytics-month">November 2026</span>
+        <span class="month-nav" onclick="shiftMonth(1)">›</span>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="an-income" style="color:var(--em)">€0</div>
+          <div class="stat-label">Income</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="an-expenses" style="color:var(--red)">€0</div>
+          <div class="stat-label">Spent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="an-txcount">0</div>
+          <div class="stat-label">Transactions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="an-avg">€0</div>
+          <div class="stat-label">Avg/Tx</div>
+        </div>
+      </div>
+
+      <!-- Donut chart -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px">Spending by Category</div>
+        <div class="chart-wrap" id="donut-wrap">
+          <canvas id="donut-chart"></canvas>
+        </div>
+        <div id="donut-legend" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Monthly bar chart -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px">Last 6 Months</div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="bar-chart"></canvas>
+        </div>
+      </div>
+
+    </div><!-- /analytics -->
+
+
+    <!-- ──────────────── REPORTS ──────────────── -->
+    <div class="page" id="page-reports">
+
+      <!-- Month selector -->
+      <div class="month-selector">
+        <span class="month-nav" onclick="shiftReportMonth(-1)">‹</span>
+        <span class="month-label" id="report-month">November 2026</span>
+        <span class="month-nav" onclick="shiftReportMonth(1)">›</span>
+      </div>
+
+      <!-- Report header -->
+      <div class="report-header">
+        <div class="report-title" id="report-month-label">November 2026</div>
+        <div class="report-sub">Monthly Financial Summary</div>
+      </div>
+
+      <!-- Summary grid -->
+      <div class="report-grid">
+        <div class="report-stat">
+          <div class="report-stat-value" id="report-income" style="color:var(--em)">€0</div>
+          <div class="report-stat-label">Income</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-value" id="report-expenses" style="color:var(--red)">€0</div>
+          <div class="report-stat-label">Expenses</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-value" id="report-net">€0</div>
+          <div class="report-stat-label">Net Savings</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-value" id="report-txcount">0</div>
+          <div class="report-stat-label">Transactions</div>
+        </div>
+      </div>
+
+      <!-- Category breakdown -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:12px">Category Breakdown</div>
+        <div id="report-cat-list"></div>
+      </div>
+
+      <!-- Budget results -->
+      <div class="section-header">
+        <span class="section-title">Budget Results</span>
+      </div>
+      <div id="report-budgets" class="budget-grid" style="margin-bottom:16px"></div>
+
+      <!-- Print / export button -->
+      <button class="btn btn-primary" onclick="printReport()" style="margin-bottom:12px">
+        🖨️ Print / Save Report
+      </button>
+      <button class="btn btn-secondary" onclick="navigate('analytics')">
+        📊 View Charts
+      </button>
+
+    </div><!-- /reports -->
+
+
+    <!-- ──────────────── SETTINGS ──────────────── -->
+    <div class="page" id="page-settings">
+
+      <div class="settings-section">
+        <div class="settings-label">Monthly Budgets</div>
+        <div id="budget-list"></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">Data</div>
+        <div class="settings-item" onclick="document.getElementById('csv-input').click()">
+          <div class="settings-item-left"><span class="settings-item-icon">📥</span><span>Import CSV File</span></div>
+          <div class="settings-item-right">›</div>
+        </div>
+        <div class="settings-item" onclick="seedDemoData()">
+          <div class="settings-item-left"><span class="settings-item-icon">🎭</span><span>Load Demo Data</span></div>
+          <div class="settings-item-right">›</div>
+        </div>
+        <div class="settings-item" onclick="clearAllData()">
+          <div class="settings-item-left"><span class="settings-item-icon">🗑️</span><span style="color:var(--red)">Clear All Data</span></div>
+          <div class="settings-item-right">›</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">How to Export CSVs</div>
+        <div class="card">
+          <div style="font-size:0.88rem;line-height:1.7">
+            <p style="font-weight:700;margin-bottom:8px">🏦 KBC (every month)</p>
+            <ol style="padding-left:18px;color:var(--muted)">
+              <li>Open KBC Mobile app</li>
+              <li>Go to your account → tap ⋮ menu</li>
+              <li>Select <strong style="color:var(--text)">"Download transactions"</strong></li>
+              <li>Choose date range → Export as <strong style="color:var(--text)">CSV</strong></li>
+              <li>Email to yourself → import here</li>
+            </ol>
+            <p style="font-weight:700;margin:12px 0 8px">💳 Beobank (every month)</p>
+            <ol style="padding-left:18px;color:var(--muted)">
+              <li>Open Beobank Mobile app</li>
+              <li>Go to Card → <strong style="color:var(--text)">Statements</strong></li>
+              <li>Select month → tap <strong style="color:var(--text)">Export</strong></li>
+              <li>Choose CSV format → email to yourself</li>
+              <li>Import here → data auto-categorized ✅</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-label">About</div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:2rem;margin-bottom:8px">🌿</div>
+          <div style="font-weight:800;margin-bottom:4px">Budget Tracker</div>
+          <div style="font-size:0.78rem;color:var(--muted)">Personal finance tracker<br>KBC & Beobank · v1.0 · Free forever</div>
+        </div>
+      </div>
+
+    </div><!-- /settings -->
+
+  </div><!-- /pages -->
+
+
+  <!-- ── Bottom Navigation ── -->
+  <nav class="nav">
+    <button class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">🏠</span>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="transactions">
+      <span class="nav-icon">📋</span>
+      <span>Transactions</span>
+    </button>
+    <button class="nav-item" data-page="analytics">
+      <span class="nav-icon">📊</span>
+      <span>Analytics</span>
+    </button>
+    <button class="nav-item" data-page="reports">
+      <span class="nav-icon">📄</span>
+      <span>Reports</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <span class="nav-icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+
+<!-- ── Modals ── -->
+
+<!-- Transaction Detail Modal -->
+<div class="modal-backdrop" id="modal-tx">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-tx-title">Transaction</div>
+    <div style="font-size:1.8rem;font-weight:800;margin-bottom:16px" id="modal-tx-amount"></div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:0.82rem">Date</span><span id="modal-tx-date" style="font-size:0.88rem;font-weight:600"></span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:0.82rem">Account</span><span id="modal-tx-account" style="font-size:0.88rem;font-weight:600"></span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:0.82rem">Category</span><span id="modal-tx-cat" style="font-size:0.88rem;font-weight:600"></span></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Re-categorize</label>
+      <select id="modal-cat-select" class="form-input"></select>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modal-tx')">Close</button>
+  </div>
+</div>
+
+<!-- Budget Edit Modal -->
+<div class="modal-backdrop" id="modal-budget">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="budget-modal-title">Edit Budget</div>
+    <div class="form-group">
+      <label class="form-label">Monthly Limit (€)</label>
+      <input type="number" id="budget-limit-input" class="form-input" placeholder="e.g. 300" min="1" step="10">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" id="save-budget-btn">Save</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-budget')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal-backdrop" id="modal-add-tx">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Transaction</div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" id="add-tx-desc" class="form-input" placeholder="e.g. Colruyt groceries">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount (€)</label>
+        <input type="number" id="add-tx-amount" class="form-input" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="add-tx-type" class="form-input">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" id="add-tx-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account</label>
+        <select id="add-tx-account" class="form-input">
+          <option value="kbc">KBC</option>
+          <option value="beobank">Beobank</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select id="add-tx-cat" class="form-input"></select>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" onclick="saveManualTx()">Add</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-tx')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="js/data.js"></script>
+<script src="js/csv-parser.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
